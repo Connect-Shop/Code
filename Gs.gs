@@ -1,9 +1,9 @@
 // --- CONFIGURATION ---
-const SPREADSHEET_ID = '10UrESr-Qnl43PLGFGvvb4tMczCp5JPq71BnwdultrWI'; // Spreadsheet ID ของคุณ
-const UPLOAD_FOLDER_ID = '1MIAxWlFog4zHecxm5u2EGNE_peRCNnVk'; // โฟลเดอร์เก็บรูปภาพ
+const SPREADSHEET_ID = 'xxxxx'; // Spreadsheet ID ของคุณ
+const UPLOAD_FOLDER_ID = 'xxxxx'; // โฟลเดอร์เก็บรูปภาพ
 const SHEET_INCOME = 'Income';
 const SHEET_WITHDRAW = 'Withdrawals';
-const ADMIN_PHONE_NUMBER = '0811606998'; // เบอร์แอดมิน
+const ADMIN_PHONE_NUMBER = 'xxxxx'; // เบอร์แอดมิน
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Connect Center App</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/allaboutitappscript/fontbank/banks.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
+    body { font-family: 'Prompt', sans-serif; background-color: #f8f9fa; padding-bottom: 80px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    input, select, textarea { font-size: 16px !important; }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; }
+    .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* UI Helpers */
+    .custom-select-trigger { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: white; cursor: pointer; transition: all 0.2s; }
+    .custom-select-options { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); margin-top: 4px; max-height: 250px; overflow-y: auto; z-index: 50; display: none; }
+    .custom-select-options.show { display: block; }
+    .custom-option { padding: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f3f4f6; }
+    
+    .custom-modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 10000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    .custom-modal-content { background: white; width: 90%; max-width: 320px; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); transform: scale(0.95); transition: transform 0.2s; }
+    .custom-modal-backdrop.show .custom-modal-content { transform: scale(1); }
+    .modal-icon-wrapper { width: 64px; height: 64px; background-color: #FEE2E2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; }
+    .modal-icon-inner { width: 32px; height: 32px; background-color: #EF4444; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; }
+    .chart-card { background: white; border-radius: 1rem; padding: 1rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); border: 1px solid #f3f4f6; margin-bottom: 1rem; }
+
+    /* Admin Dark Theme */
+    .admin-bg { 
+      background-color: #111827; 
+      color: #e5e7eb; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      bottom: 0;
+      width: 100%; 
+      height: 100%; 
+      z-index: 9000; 
+      overflow-y: auto; 
+      -webkit-overflow-scrolling: touch; 
+    }
+    .admin-content-wrapper { padding: 1.5rem; max-width: 80rem; margin: 0 auto; padding-bottom: 5rem; }
+    .admin-card { background-color: #1f2937; border-radius: 12px; padding: 1.5rem; border: 1px solid #374151; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+    .admin-table-container { background-color: #1f2937; border-radius: 12px; overflow: hidden; border: 1px solid #374151; margin-bottom: 2rem; }
+    .admin-table th { background-color: #111827; color: #9ca3af; text-transform: uppercase; font-size: 0.7rem; padding: 1rem; text-align: left; letter-spacing: 0.05em; border-bottom: 1px solid #374151; }
+    .admin-table td { padding: 1rem; border-bottom: 1px solid #374151; color: #e5e7eb; font-size: 0.85rem; vertical-align: middle; }
+    .admin-table tr:hover { background-color: #374151; }
+    .admin-table tr:last-child td { border-bottom: none; }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .proof-img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid #4b5563; cursor: pointer; transition: transform 0.2s; }
+    .proof-img:hover { transform: scale(1.5); }
+    
+    .admin-bg::-webkit-scrollbar { width: 8px; }
+    .admin-bg::-webkit-scrollbar-track { background: #111827; }
+    .admin-bg::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+    .admin-bg::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+  </style>
+</head>
+<body class="text-gray-800">
+
+  <div id="loadingOverlay" class="loading-overlay"><div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-600 mb-4"></div><div class="text-blue-600 font-semibold">กำลังดำเนินการ...</div></div>
+
+  <!-- General Modal -->
+  <div id="customModal" class="custom-modal-backdrop">
+    <div class="custom-modal-content">
+      <div id="modalIconContainer" class="modal-icon-wrapper"><div class="modal-icon-inner"><i class="fa-solid fa-info"></i></div></div>
+      <h3 id="modalTitle" class="text-lg font-bold text-gray-900 mb-2"></h3>
+      <p id="modalMessage" class="text-sm text-gray-500 mb-6 leading-relaxed"></p>
+      <div class="grid grid-cols-2 gap-3" id="modalBtnGroup">
+        <button id="modalBtnCancel" onclick="closeCustomModal()" class="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50 bg-white">Cancel</button>
+        <button id="modalBtnConfirm" class="w-full py-2.5 bg-[#EF4444] text-white rounded-xl font-medium hover:bg-[#DC2626] shadow-md shadow-red-200">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="adminLoginModal" class="custom-modal-backdrop">
+    <div class="custom-modal-content bg-white">
+      <div class="text-center mb-4">
+        <div class="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-user-shield text-white"></i></div>
+        <h3 class="text-lg font-bold text-gray-900">Admin Access</h3>
+      </div>
+      <form onsubmit="handleAdminLogin(event)">
+        <div class="mb-3 text-left"><label class="text-xs text-gray-500">เบอร์โทรศัพท์</label><input type="tel" name="adminPhone" class="w-full border border-gray-200 rounded-lg p-2 outline-none focus:border-gray-800" placeholder="081XXXXXXX" required></div>
+        <div class="mb-4 text-left"><label class="text-xs text-gray-500">อีเมล</label><input type="email" name="adminEmail" class="w-full border border-gray-200 rounded-lg p-2 outline-none focus:border-gray-800" placeholder="admin@example.com" required></div>
+        <button type="submit" class="w-full bg-gray-900 text-white py-2.5 rounded-xl font-medium hover:bg-gray-700">เข้าสู่ระบบ</button>
+        <button type="button" onclick="closeAdminLogin()" class="w-full mt-2 text-xs text-gray-400 underline">ยกเลิก</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- User Interface Header & Body -->
+  <div id="mainHeader" class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-blue-600 flex items-center gap-2"><i class="fa-solid fa-chart-line"></i> Connect Center</h1>
+      <div class="flex items-center gap-2">
+         <div class="text-xs text-gray-400">V.1.4</div>
+         <button onclick="openAdminLogin()" class="text-gray-300 hover:text-gray-800 w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 transition"><i class="fa-solid fa-user-shield"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="userAppArea" class="max-w-md mx-auto p-4">
+    <!-- User Tabs -->
+    <div id="tab-income" class="tab-content active">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+        <h2 class="text-xl font-bold mb-1 text-gray-900">Let's get started</h2>
+        <p class="text-gray-400 text-xs mb-6">กรอกข้อมูลลูกค้าเพื่อบันทึกรายได้</p>
+        <form id="incomeForm" onsubmit="handleIncomeSubmit(event)">
+          <div class="grid grid-cols-2 gap-3 mb-4"><div><label class="block text-xs text-gray-500 mb-1">First name</label><input type="text" name="firstName" class="w-full border border-gray-200 rounded-lg p-3 outline-none" placeholder="Alex" required></div><div><label class="block text-xs text-gray-500 mb-1">Last name</label><input type="text" name="lastName" class="w-full border border-gray-200 rounded-lg p-3 outline-none" placeholder="Parkinson" required></div></div>
+          <div class="mb-4"><label class="block text-xs text-gray-500 mb-1">Phone number</label><div class="relative"><span class="absolute left-3 top-3.5"><i class="fa-solid fa-phone text-gray-400 text-sm"></i></span><input type="tel" name="phone" class="w-full border border-gray-200 rounded-lg p-3 pl-9 outline-none" placeholder="081XXXXXXX" required></div></div>
+          <div class="mb-4"><label class="block text-xs text-gray-500 mb-1">Email</label><input type="email" name="email" class="w-full border border-gray-200 rounded-lg p-3 outline-none" placeholder="alex@example.com" required></div>
+          <div class="mb-4"><label class="block text-xs text-gray-500 mb-1">ประเภทบริการ</label><select name="serviceType" class="w-full border border-gray-200 rounded-lg p-3 bg-white outline-none" required><option value="">เลือกบริการ...</option><option value="สร้างไลน์บอท">สร้างไลน์บอท</option><option value="เชื่อมต่อAPI Line">เชื่อมต่อ API Line</option><option value="ระบบเว็ปแอป">ระบบเว็บแอป</option><option value="บริการอื่นๆ">บริการอื่นๆ</option></select></div>
+          <div class="grid grid-cols-2 gap-3 mb-4"><div><label class="block text-xs text-gray-500 mb-1">จำนวนเงิน</label><input type="number" id="incomeAmount" name="amount" class="w-full border border-gray-200 rounded-lg p-3 font-semibold text-blue-600 outline-none" placeholder="0.00" oninput="calcCommission()" required></div><div><label class="block text-xs text-gray-500 mb-1">คอมมิชชั่น 10%</label><input type="text" id="commissionPreview" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-green-600 font-bold outline-none" value="0.00" readonly></div></div>
+          <div class="mb-4"><label class="block text-xs text-gray-500 mb-1">ช่องทางแนะนำ</label><select name="channel" class="w-full border border-gray-200 rounded-lg p-3 bg-white outline-none"><option value="Facebook">Facebook</option><option value="Instagram">Instagram</option><option value="Line">Line</option><option value="Website">Website</option><option value="Omni">Omni</option></select></div>
+          <div class="mb-6"><label class="block text-xs text-gray-500 mb-1">อัปโหลดหลักฐาน</label><input type="file" id="imageInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700"><input type="hidden" name="base64Image" id="base64Image"></div>
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 flex justify-center items-center gap-2 text-sm">GET STARTED <i class="fa-solid fa-arrow-right"></i></button>
+        </form>
+      </div>
+    </div>
+
+    <div id="tab-withdraw" class="tab-content">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+        <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-gray-800">ถอนรายได้</h2><button onclick="refreshWithdrawData()" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm"><i id="refreshIconWd" class="fa-solid fa-rotate-right"></i></button></div>
+        <div id="withdrawSearchStep" class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">ค้นหาด้วยเบอร์โทรศัพท์</label><div class="flex gap-2"><input type="tel" id="withdrawPhoneSearch" class="flex-1 border border-gray-200 rounded-lg p-3 outline-none focus:border-blue-500" placeholder="08XXXXXXXX"><button onclick="checkBalance()" class="bg-blue-600 text-white px-5 rounded-lg font-medium hover:bg-blue-700 shadow-sm"><i class="fa-solid fa-search"></i></button></div></div>
+        
+        <div id="pendingAlertBox" class="hidden mb-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 animate-pulse">
+           <div class="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shrink-0 mt-1"><i class="fa-solid fa-circle-exclamation"></i></div>
+           <div><p class="font-bold text-red-600 text-sm">แจ้งเตือน!</p><p id="pendingMessageText" class="text-xs text-red-500 leading-relaxed"></p></div>
+        </div>
+
+        <div id="withdrawFormStep" class="hidden">
+           <div class="bg-blue-50 p-4 rounded-xl mb-6 border border-blue-100 text-center relative overflow-hidden"><div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wallet text-6xl text-blue-600"></i></div><p class="text-xs text-gray-500 mb-1">ยอดเงินคงเหลือที่ถอนได้</p><h3 class="text-3xl font-bold text-blue-600">฿<span id="wdBalance">0.00</span></h3><p class="text-xs text-gray-400 mt-2">คุณ: <span id="wdName" class="font-semibold text-gray-600">...</span></p></div>
+           <form id="withdrawForm" onsubmit="preSubmitWithdraw(event)"><input type="hidden" id="wdPhoneHidden" name="withdrawPhone"><div class="mb-4"><label class="block text-xs text-gray-500 mb-1">จำนวนเงินที่ต้องการถอน</label><input type="number" name="withdrawAmount" class="w-full border-2 border-gray-100 rounded-xl p-4 text-xl font-bold text-center focus:border-blue-500 outline-none text-gray-700" placeholder="0.00" min="300" max="20000" required></div><div class="mb-4 relative"><label class="block text-xs text-gray-500 mb-1">เลือกธนาคาร</label><input type="hidden" name="bankSelect" id="bankSelectInput" required><div class="custom-select-trigger" onclick="toggleBankDropdown()"><div class="flex items-center gap-3"><span id="selectedBankIconDisplay" class="text-gray-400 w-8 text-center"><i class="fa-solid fa-building-columns"></i></span><span id="selectedBankNameDisplay" class="text-sm text-gray-500">เลือกธนาคาร...</span></div><i class="fa-solid fa-chevron-down text-xs text-gray-400"></i></div><div id="bankDropdownOptions" class="custom-select-options"></div></div><div class="mb-4"><label class="block text-xs text-gray-500 mb-1">เลขที่บัญชี</label><input type="text" name="accountNumber" class="w-full border border-gray-200 rounded-lg p-3 outline-none focus:border-blue-500" placeholder="ระบุเลขบัญชี" required></div><div class="flex items-start mb-6 bg-gray-50 p-3 rounded-lg"><input id="terms" type="checkbox" class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded mt-0.5" required><label for="terms" class="ml-2 text-xs text-gray-500 leading-tight">ฉันยอมรับเงื่อนไข</label></div><div class="grid grid-cols-2 gap-3"><button type="button" onclick="cancelWithdraw()" class="w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-xl hover:bg-gray-50 text-sm">ยกเลิก</button><button type="submit" class="w-full bg-[#EF4444] text-white font-medium py-3 rounded-xl hover:bg-[#DC2626] shadow-md shadow-red-200 text-sm">ยืนยันการถอน</button></div></form>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-history" class="tab-content">
+       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+         <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold">ประวัติและรายงาน</h2><button onclick="refreshHistoryData()" class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm"><i id="refreshIconHist" class="fa-solid fa-rotate-right"></i></button></div>
+         <div class="flex gap-2 mb-6"><input type="text" id="historySearchInput" class="flex-1 border border-gray-200 rounded-lg p-2 outline-none" placeholder="เบอร์โทร หรือ อีเมล"><button onclick="loadHistory()" class="bg-blue-600 text-white px-4 rounded-lg text-sm hover:bg-blue-700">ค้นหา</button></div>
+         <div class="grid grid-cols-2 gap-3 mb-6"><div class="bg-gray-800 text-white p-4 rounded-xl shadow-sm"><p class="text-[10px] text-gray-400">รายได้ทั้งหมด</p><p class="text-lg font-bold mt-1 truncate">฿<span id="dashTotalIncome">0</span></p></div><div class="bg-blue-600 text-white p-4 rounded-xl shadow-blue-200 shadow-md"><p class="text-[10px] text-blue-100">ถอนแล้ว</p><p class="text-lg font-bold mt-1 truncate">฿<span id="dashWithdrawn">0</span></p></div><div class="bg-white border border-gray-100 p-4 rounded-xl shadow-sm col-span-2"><p class="text-[10px] text-gray-500">คงเหลือในระบบ</p><p class="text-2xl font-bold text-green-600 mt-1">฿<span id="dashBalance">0</span></p></div><div class="bg-white border border-gray-100 p-3 rounded-xl text-center"><p class="text-[10px] text-gray-500 mb-1">ถอนไปแล้ว</p><p class="text-sm font-bold text-gray-700"><span id="dashCountToday">0/3</span> ครั้ง</p></div><div class="bg-orange-50 border border-orange-100 p-3 rounded-xl text-center"><p class="text-[10px] text-orange-500 mb-1">รอตรวจสอบ</p><p class="text-sm font-bold text-orange-600"><span id="dashPending">0</span> รายการ</p></div></div>
+         <div class="mb-6"><div class="chart-card"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-sm text-gray-700">Sales Report Area</h3><span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Recent</span></div><div class="h-40"><canvas id="barChart"></canvas></div></div><div class="chart-card"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-sm text-gray-700">Sales Activity</h3><span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Services</span></div><div class="h-40 flex justify-center"><canvas id="doughnutChart"></canvas></div></div></div>
+         <div class="mb-4"><h3 class="font-bold text-xs mb-2 text-blue-600 flex items-center gap-1"><i class="fa-solid fa-list"></i> ประวัติรายได้</h3><div class="overflow-x-auto rounded-lg border border-gray-100"><table class="w-full text-xs text-left"><thead class="bg-gray-50 text-gray-500 font-medium"><tr><th class="p-3">วันที่</th><th class="p-3">บริการ</th><th class="p-3 text-right">คอมฯ</th><th class="p-3 text-center">สถานะ</th></tr></thead><tbody id="incomeTableBody" class="divide-y divide-gray-100 bg-white"><tr><td colspan="4" class="p-4 text-center text-gray-400">กรุณาค้นหาข้อมูล</td></tr></tbody></table></div></div>
+         <div><h3 class="font-bold text-xs mb-2 text-red-500 flex items-center gap-1"><i class="fa-solid fa-list-check"></i> ประวัติการถอน</h3><div class="overflow-x-auto rounded-lg border border-gray-100"><table class="w-full text-xs text-left"><thead class="bg-gray-50 text-gray-500 font-medium"><tr><th class="p-3">วันที่</th><th class="p-3">ธนาคาร</th><th class="p-3 text-right">ยอดถอน</th><th class="p-3 text-center">สถานะ</th></tr></thead><tbody id="withdrawTableBody" class="divide-y divide-gray-100 bg-white"><tr><td colspan="4" class="p-4 text-center text-gray-400">กรุณาค้นหาข้อมูล</td></tr></tbody></table></div></div>
+       </div>
+    </div>
+
+    <div id="tab-contact" class="tab-content"><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center"><div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce"><i class="fa-solid fa-headset text-3xl text-blue-600"></i></div><h2 class="text-xl font-bold mb-2 text-gray-800">Support Center</h2><p class="text-xs text-gray-400 mb-8">ทีมงานพร้อมช่วยเหลือตลอด 24 ชั่วโมง</p><div class="space-y-3"><a href="#" class="block p-3 border border-gray-100 rounded-xl flex items-center gap-4 hover:bg-gray-50 transition shadow-sm"><div class="w-10 h-10 bg-[#06C755] rounded-full flex items-center justify-center text-white text-lg"><i class="fa-brands fa-line"></i></div><div class="text-left"><p class="text-[10px] text-gray-400">Line Official</p><p class="font-bold text-sm text-gray-700">@CSHOP</p></div></a><a href="#" class="block p-3 border border-gray-100 rounded-xl flex items-center gap-4 hover:bg-gray-50 transition shadow-sm"><div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white text-sm"><i class="fa-solid fa-envelope"></i></div><div class="text-left"><p class="text-[10px] text-gray-400">Email</p><p class="font-bold text-sm text-gray-700">connectcenter.cc@gmail.com</p></div></a><a href="#" class="block p-3 border border-gray-100 rounded-xl flex items-center gap-4 hover:bg-gray-50 transition shadow-sm"><div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm"><i class="fa-solid fa-phone"></i></div><div class="text-left"><p class="text-[10px] text-gray-400">Phone</p><p class="font-bold text-sm text-gray-700">081-160-6998</p></div></a></div></div></div>
+  </div>
+  
+  <!-- ADMIN DASHBOARD -->
+  <div id="adminDashboardArea" class="admin-bg hidden">
+    <div class="admin-content-wrapper">
+      <div class="flex justify-between items-center mb-8">
+        <div><h1 class="text-2xl font-bold text-white mb-1">Admin Dashboard</h1><p class="text-xs text-gray-400">Real-time Data Overview</p></div>
+        <button onclick="exitAdmin()" class="bg-gray-800 border border-gray-700 px-4 py-2 rounded-lg text-sm text-white hover:bg-gray-700">Exit Admin</button>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+         <div class="admin-card"><p class="text-xs text-gray-400 mb-2">Total Revenue</p><h2 class="text-2xl font-bold text-white">฿<span id="admTotalRev">0</span></h2><div class="text-xs text-green-500 mt-2 bg-green-900/30 inline-block px-2 py-1 rounded"><i class="fa-solid fa-arrow-trend-up"></i> +12.5%</div></div>
+         <div class="admin-card"><p class="text-xs text-gray-400 mb-2">Total Order</p><h2 class="text-2xl font-bold text-white" id="admTotalOrder">0</h2><div class="text-xs text-blue-500 mt-2 bg-blue-900/30 inline-block px-2 py-1 rounded"><i class="fa-solid fa-arrow-trend-up"></i> +8.2%</div></div>
+         <div class="admin-card"><p class="text-xs text-gray-400 mb-2">New Customer</p><h2 class="text-2xl font-bold text-white" id="admNewCust">0</h2><div class="text-xs text-red-500 mt-2 bg-red-900/30 inline-block px-2 py-1 rounded"><i class="fa-solid fa-arrow-trend-down"></i> -4.3%</div></div>
+         <div class="admin-card"><p class="text-xs text-gray-400 mb-2">Conversion Rate</p><h2 class="text-2xl font-bold text-white" id="admConv">3.2%</h2><div class="text-xs text-purple-500 mt-2 bg-purple-900/30 inline-block px-2 py-1 rounded"><i class="fa-solid fa-arrow-trend-up"></i> +2.1%</div></div>
+      </div>
+
+      <!-- Charts Area -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="lg:col-span-2 admin-card"><h3 class="text-sm font-bold text-white mb-4">Financial Overview</h3><div class="h-64"><canvas id="adminComboChart"></canvas></div></div>
+        <div class="admin-card"><h3 class="text-sm font-bold text-white mb-4">Volume</h3><div class="h-64"><canvas id="adminBarChart"></canvas></div></div>
+      </div>
+
+      <!-- Table 1: Income -->
+      <div class="admin-table-container">
+        <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-[#1f2937]"><h3 class="font-bold text-white">Incoming Transactions</h3><button onclick="loadAdminData()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-rotate-right"></i></button></div>
+        <div class="overflow-x-auto">
+          <table class="w-full admin-table text-left border-collapse">
+            <thead><tr><th>Date</th><th>Customer</th><th>Service/Channel</th><th>Amount/Comm</th><th>Proof</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="adminIncomeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Table 2: Withdraw -->
+      <div class="admin-table-container">
+        <div class="p-4 border-b border-gray-700 bg-[#1f2937]"><h3 class="font-bold text-white">Withdrawal Requests</h3></div>
+        <div class="overflow-x-auto">
+          <table class="w-full admin-table text-left border-collapse">
+            <thead><tr><th>Date</th><th>Customer</th><th>Bank Info</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="adminWithdrawTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottomNav" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] py-2 z-50 rounded-t-2xl">
+      <div class="flex justify-around items-center max-w-md mx-auto">
+         <button onclick="switchTab('income')" class="nav-btn active flex flex-col items-center text-gray-400 hover:text-blue-600 w-1/4 transition-all duration-300"><i class="fa-solid fa-wallet text-xl mb-1"></i><span class="text-[10px] font-medium">รายได้</span></button>
+         <button onclick="switchTab('withdraw')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600 w-1/4 transition-all duration-300"><i class="fa-solid fa-money-bill-transfer text-xl mb-1"></i><span class="text-[10px] font-medium">ถอนเงิน</span></button>
+         <button onclick="switchTab('history')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600 w-1/4 transition-all duration-300"><i class="fa-solid fa-clock-rotate-left text-xl mb-1"></i><span class="text-[10px] font-medium">ประวัติ</span></button>
+         <button onclick="switchTab('contact')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600 w-1/4 transition-all duration-300"><i class="fa-solid fa-comments text-xl mb-1"></i><span class="text-[10px] font-medium">ติดต่อ</span></button>
+      </div>
+  </div>
+
+  <script>
+    // ... (Bank List & Modal Functions same as before) ...
+    const allBanks = [{id:'bank-bbl', name:'Bangkok Bank'}, {id:'bank-kbank', name:'Kasikornbank'}, {id:'bank-rbs', name:'Royal Bank of Scotland'}, {id:'bank-ktb', name:'Krungthai Bank'}, {id:'bank-jpm', name:'J.P. Morgan'}, {id:'bank-mufg', name:'Bank of Tokyo-Mitsubishi UFJ'}, {id:'bank-tmb', name:'TMB Bank'}, {id:'bank-scb', name:'Siam Commercial Bank'}, {id:'bank-citi', name:'Citibank'}, {id:'bank-smbc', name:'Sumitomo Mitsui Banking Corporation'}, {id:'bank-sc', name:'Standard Chartered (Thai)'}, {id:'bank-cimb', name:'CIMB Thai Bank'}, {id:'bank-uob', name:'United Overseas Bank (Thai)'}, {id:'bank-bay', name:'Bank of Ayudhya (Krungsri)'}, {id:'bank-mega', name:'Mega International Commercial Bank'}, {id:'bank-boa', name:'Bank of America'}, {id:'bank-cacib', name:'Crédit Agricole'}, {id:'bank-gsb', name:'Government Savings Bank'}, {id:'bank-hsbc', name:'Hongkong and Shanghai Banking Corporation'}, {id:'bank-db', name:'Deutsche Bank'}, {id:'bank-ghb', name:'Government Housing Bank'}, {id:'bank-baac', name:'Bank for Agriculture and Agricultural Cooperatives'}, {id:'bank-mb', name:'Mizuho Bank'}, {id:'bank-bnp', name:'BNP Paribas'}, {id:'bank-tbank', name:'Thanachart Bank'}, {id:'bank-ibank', name:'Islamic Bank of Thailand'}, {id:'bank-tisco', name:'Tisco Bank'}, {id:'bank-kk', name:'Kiatnakin Bank'}, {id:'bank-icbc', name:'Industrial and Commercial Bank of China (Thai)'}, {id:'bank-tcrb', name:'Thai Credit Retail Bank'}, {id:'bank-lhb', name:'Land and Houses Bank'}, {id:'bank-tmn', name:'TrueMoney Wallet'}, {id:'bank-pp', name:'PromptPay'}];
+
+    function showCustomModal({ title, message, type, onConfirm, showCancel = true, confirmText = 'Confirm', cancelText = 'Cancel' }) {
+      const modal = document.getElementById('customModal');
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('modalMessage').innerHTML = message;
+      const btnConfirm = document.getElementById('modalBtnConfirm');
+      const btnCancel = document.getElementById('modalBtnCancel');
+      const iconWrapper = document.getElementById('modalIconContainer');
+      const iconInner = document.querySelector('.modal-icon-inner');
+      
+      btnConfirm.innerText = confirmText; btnCancel.innerText = cancelText;
+      if (type === 'success') {
+         iconWrapper.style.backgroundColor = '#DCFCE7'; iconInner.style.backgroundColor = '#10B981'; iconInner.innerHTML = '<i class="fa-solid fa-check"></i>';
+         btnConfirm.className = "w-full py-2.5 bg-[#10B981] text-white rounded-xl font-medium hover:bg-[#059669] shadow-md shadow-green-100";
+         btnCancel.style.display = 'none'; btnConfirm.parentElement.className = "grid grid-cols-1";
+      } else if (type === 'delete') {
+         iconWrapper.style.backgroundColor = '#FEE2E2'; iconInner.style.backgroundColor = '#EF4444'; iconInner.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+         btnConfirm.className = "w-full py-2.5 bg-[#EF4444] text-white rounded-xl font-medium hover:bg-[#DC2626] shadow-md shadow-red-200";
+         btnCancel.style.display = showCancel ? 'block' : 'none'; btnConfirm.parentElement.className = showCancel ? "grid grid-cols-2 gap-3" : "grid grid-cols-1";
+      } else { // confirm
+         iconWrapper.style.backgroundColor = '#FEF3C7'; iconInner.style.backgroundColor = '#F59E0B'; iconInner.innerHTML = '<i class="fa-solid fa-question"></i>';
+         btnConfirm.className = "w-full py-2.5 bg-[#F59E0B] text-white rounded-xl font-medium hover:bg-[#D97706] shadow-md shadow-orange-100";
+         btnCancel.style.display = 'block'; btnConfirm.parentElement.className = "grid grid-cols-2 gap-3";
+      }
+      modal.style.display = 'flex'; setTimeout(() => modal.classList.add('show'), 10);
+      btnConfirm.onclick = () => { closeCustomModal(); if(onConfirm) onConfirm(); };
+    }
+    function closeCustomModal() { document.getElementById('customModal').classList.remove('show'); setTimeout(() => { document.getElementById('customModal').style.display = 'none'; }, 200); }
+    function initBankDropdown() { const container = document.getElementById('bankDropdownOptions'); let html = ''; allBanks.forEach(bank => { html += `<div class="custom-option" onclick="selectBank('${bank.id}', '${bank.name}')"><i class="bank ${bank.id} text-lg w-8 text-center"></i><span class="text-sm text-gray-700">${bank.name}</span></div>`; }); container.innerHTML = html; }
+    function toggleBankDropdown() { document.getElementById('bankDropdownOptions').classList.toggle('show'); }
+    function selectBank(id, name) { document.getElementById('bankSelectInput').value = id; document.getElementById('selectedBankIconDisplay').innerHTML = `<i class="bank ${id} text-lg"></i>`; document.getElementById('selectedBankIconDisplay').classList.remove('text-gray-400'); document.getElementById('selectedBankNameDisplay').innerText = name; document.getElementById('selectedBankNameDisplay').classList.replace('text-gray-500', 'text-gray-900'); document.getElementById('bankDropdownOptions').classList.remove('show'); }
+    document.addEventListener('click', e => { if (!document.querySelector('.custom-select-trigger').parentNode.contains(e.target)) { document.getElementById('bankDropdownOptions').classList.remove('show'); } });
+    initBankDropdown();
+    function switchTab(tabName) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + tabName).classList.add('active'); const tabs = ['income', 'withdraw', 'history', 'contact']; document.querySelectorAll('.nav-btn').forEach((btn, index) => { if(tabs[index] === tabName) { btn.classList.add('text-blue-600', '-translate-y-1'); btn.classList.remove('text-gray-400'); } else { btn.classList.remove('text-blue-600', '-translate-y-1'); btn.classList.add('text-gray-400'); } }); }
+    function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+    function calcCommission() { const amount = parseFloat(document.getElementById('incomeAmount').value) || 0; document.getElementById('commissionPreview').value = (amount * 0.10).toFixed(2); }
+    document.getElementById('imageInput').addEventListener('change', function() { if (this.files && this.files[0]) { const reader = new FileReader(); reader.onload = e => document.getElementById('base64Image').value = e.target.result; reader.readAsDataURL(this.files[0]); } });
+
+    // --- ACTIONS ---
+    function handleIncomeSubmit(e) { e.preventDefault(); showLoading(true); const form = document.getElementById('incomeForm'); const formData = { firstName: form.firstName.value, lastName: form.lastName.value, phone: form.phone.value, email: form.email.value, serviceType: form.serviceType.value, amount: form.amount.value, channel: form.channel.value, imageFile: document.getElementById('base64Image').value }; google.script.run.withSuccessHandler(res => { showLoading(false); if (res.success) { showCustomModal({ title: 'สำเร็จ!', message: 'บันทึกรายได้เรียบร้อยแล้ว<br>ระบบได้ส่งอีเมลยืนยันสถานะ "รอตรวจสอบ"', type: 'success', confirmText: 'ตกลง' }); form.reset(); document.getElementById('commissionPreview').value = '0.00'; document.getElementById('base64Image').value = ''; } else { showCustomModal({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถบันทึกข้อมูลได้', type: 'delete', showCancel: false, confirmText: 'ปิด' }); } }).saveIncomeData(formData); }
+
+    function refreshWithdrawData() { const icon = document.getElementById('refreshIconWd'); icon.classList.add('fa-spin'); if(document.getElementById('withdrawPhoneSearch').value) checkBalance(); else setTimeout(() => icon.classList.remove('fa-spin'), 500); }
+    function checkBalance() { const phone = document.getElementById('withdrawPhoneSearch').value; if(!phone) return; document.getElementById('refreshIconWd').classList.add('fa-spin'); showLoading(true); google.script.run.withSuccessHandler(data => { showLoading(false); document.getElementById('refreshIconWd').classList.remove('fa-spin'); document.getElementById('pendingAlertBox').classList.add('hidden'); if(data.pendingTransaction) { document.getElementById('pendingAlertBox').classList.remove('hidden'); document.getElementById('pendingMessageText').innerHTML = `ไม่สามารถดำเนินการถอนได้<br>เนื่องจากมีรายการถอน ครั้งก่อนหน้านี้ค้างอยู่ในระบบ<br>หากรายการก่อนหน้า อนุมัติแล้ว ระบบจะแจ้งเตือนผ่านอีเมล์อีกครั้งค่ะ<br>เลขที่รายการ <span class="font-bold bg-white px-1 rounded text-red-600">${data.pendingTransaction.id}</span>`; document.getElementById('withdrawFormStep').classList.add('hidden'); return; } if(data.found) { document.getElementById('withdrawSearchStep').classList.add('hidden'); document.getElementById('withdrawFormStep').classList.remove('hidden'); document.getElementById('wdName').innerText = data.name; document.getElementById('wdBalance').innerText = data.remainingBalance.toLocaleString('en-US', {minimumFractionDigits:2}); document.getElementById('wdPhoneHidden').value = phone; } else { showCustomModal({ title: 'ไม่พบข้อมูล', message: 'ไม่พบเบอร์โทรนี้ หรือยังไม่มีรายได้ที่อนุมัติ', type: 'delete', showCancel: false, confirmText: 'ปิด' }); } }).getUserBalanceInfo(phone); }
+    function cancelWithdraw() { document.getElementById('withdrawFormStep').classList.add('hidden'); document.getElementById('withdrawSearchStep').classList.remove('hidden'); document.getElementById('withdrawForm').reset(); document.getElementById('pendingAlertBox').classList.add('hidden'); document.getElementById('selectedBankNameDisplay').innerText = 'เลือกธนาคาร...'; document.getElementById('selectedBankNameDisplay').classList.replace('text-gray-900', 'text-gray-500'); }
+    function preSubmitWithdraw(e) { e.preventDefault(); if(!document.getElementById('bankSelectInput').value) { showCustomModal({ title:'แจ้งเตือน', message:'กรุณาเลือกธนาคาร', type:'delete', showCancel:false, confirmText:'ตกลง' }); return; } showCustomModal({ title: 'ยืนยันการถอนเงิน?', message: 'คุณต้องการยืนยันการทำรายการนี้ใช่หรือไม่', type: 'confirm', confirmText: 'ยืนยัน', cancelText: 'ยกเลิก', onConfirm: () => realWithdrawSubmit() }); }
+    function realWithdrawSubmit() { showLoading(true); const form = document.getElementById('withdrawForm'); const formData = { withdrawPhone: form.withdrawPhone.value, withdrawAmount: form.withdrawAmount.value, bankSelect: form.bankSelect.value, accountNumber: form.accountNumber.value }; google.script.run.withSuccessHandler(res => { showLoading(false); if(res.success) { showCustomModal({ title: 'ทำรายการสำเร็จ', message: 'รายการเข้าสู่สถานะรอดำเนินการ<br>ระบบได้ส่งอีเมลยืนยันสถานะ "รอตรวจสอบ"', type: 'success', confirmText: 'เสร็จสิ้น', onConfirm: () => cancelWithdraw() }); } else { showCustomModal({ title: 'แจ้งเตือน', message: res.message, type: 'delete', showCancel: false, confirmText: 'ปิด' }); } }).saveWithdrawalData(formData); }
+
+    let barChart = null, doughnutChart = null;
+    function refreshHistoryData() { const icon = document.getElementById('refreshIconHist'); icon.classList.add('fa-spin'); if(document.getElementById('historySearchInput').value) loadHistory(); else setTimeout(() => icon.classList.remove('fa-spin'), 500); }
+    function loadHistory() { const key = document.getElementById('historySearchInput').value; if(!key) return; document.getElementById('refreshIconHist').classList.add('fa-spin'); showLoading(true); google.script.run.withSuccessHandler(data => { showLoading(false); document.getElementById('refreshIconHist').classList.remove('fa-spin'); renderDashboard(data.summary); renderTable('incomeTableBody', data.incomeList, 'income'); renderTable('withdrawTableBody', data.withdrawList, 'withdraw'); renderCharts(data.charts); }).getHistoryData(key); }
+    function renderDashboard(sum) { document.getElementById('dashTotalIncome').innerText = sum.totalIncome.toLocaleString(); document.getElementById('dashWithdrawn').innerText = sum.totalWithdrawn.toLocaleString(); document.getElementById('dashBalance').innerText = sum.remaining.toLocaleString(); document.getElementById('dashCountToday').innerText = `${sum.withdrawCountToday}/3`; document.getElementById('dashPending').innerText = sum.pendingCount; }
+    function renderTable(elementId, list, type) { const tbody = document.getElementById(elementId); tbody.innerHTML = ''; if(list.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ไม่พบข้อมูล</td></tr>`; return; } list.forEach(item => { if(type === 'income') { const statusColor = item.status === 'ดำเนินการแล้ว' ? 'text-green-500' : 'text-orange-500'; tbody.innerHTML += `<tr class="hover:bg-gray-50 border-b border-gray-50"><td class="p-3 text-gray-500">${item.date.split(' ')[0]}<br><span class="text-[10px]">${item.date.split(' ')[1]}</span></td><td class="p-3 truncate max-w-[80px] text-gray-700">${item.service}</td><td class="p-3 text-right font-bold text-gray-800">+${parseFloat(item.commission).toLocaleString()}</td><td class="p-3 text-center"><i class="fa-solid fa-circle-check ${statusColor}"></i></td></tr>`; } else { const statusColor = item.status === 'โอนแล้ว' ? 'text-green-500' : 'text-gray-300'; const idText = item.id ? `<br><span class="text-[8px] text-gray-400">${item.id}</span>` : ''; tbody.innerHTML += `<tr class="hover:bg-gray-50 border-b border-gray-50"><td class="p-3 text-gray-500">${item.date.split(' ')[0]}${idText}</td><td class="p-3"><i class="bank ${item.bank} text-xl"></i></td><td class="p-3 text-right font-bold text-red-500">-${parseFloat(item.amount).toLocaleString()}</td><td class="p-3 text-center"><i class="fa-solid fa-circle ${statusColor} text-[8px]"></i></td></tr>`; } }); }
+    function renderCharts(data) { const ctxBar = document.getElementById('barChart').getContext('2d'); if(barChart) barChart.destroy(); const dates = Object.keys(data.daily).sort(); const amounts = dates.map(d => data.daily[d]); barChart = new Chart(ctxBar, { type: 'bar', data: { labels: dates.length ? dates : ['No Data'], datasets: [{ label: 'Commission', data: dates.length ? amounts : [0], backgroundColor: '#2563eb', borderRadius: 4, barThickness: 15 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false} }, scales: { y: { beginAtZero: true, grid: {display: true, color:'#f3f4f6'} }, x: { grid: {display: false} } } } }); const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d'); if(doughnutChart) doughnutChart.destroy(); const services = Object.keys(data.services); const counts = Object.values(data.services); doughnutChart = new Chart(ctxDoughnut, { type: 'doughnut', data: { labels: services.length ? services : ['None'], datasets: [{ data: services.length ? counts : [1], backgroundColor: services.length ? ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] : ['#e5e7eb'], borderWidth: 0, cutout: '70%' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: true, position:'right', labels: {boxWidth: 10, font: {size: 10}}} } } }); }
+
+    // --- ADMIN SYSTEM ---
+    let adminComboChart = null, adminBarChart = null;
+    function openAdminLogin() { document.getElementById('adminLoginModal').style.display = 'flex'; setTimeout(() => document.getElementById('adminLoginModal').classList.add('show'), 10); }
+    function closeAdminLogin() { document.getElementById('adminLoginModal').classList.remove('show'); setTimeout(() => document.getElementById('adminLoginModal').style.display = 'none', 200); }
+    function handleAdminLogin(e) { e.preventDefault(); const phone = e.target.adminPhone.value; const email = e.target.adminEmail.value; showLoading(true); google.script.run.withSuccessHandler(res => { showLoading(false); if(res.success) { closeAdminLogin(); document.getElementById('userAppArea').classList.add('hidden'); document.getElementById('mainHeader').classList.add('hidden'); document.getElementById('bottomNav').classList.add('hidden'); document.getElementById('adminDashboardArea').classList.remove('hidden'); loadAdminData(); } else { showCustomModal({ title:'Access Denied', message: res.message, type:'delete', showCancel:false, confirmText:'Close'}); } }).adminLogin(phone, email); }
+    function exitAdmin() { document.getElementById('adminDashboardArea').classList.add('hidden'); document.getElementById('userAppArea').classList.remove('hidden'); document.getElementById('mainHeader').classList.remove('hidden'); document.getElementById('bottomNav').classList.remove('hidden'); }
+    function loadAdminData() { showLoading(true); google.script.run.withSuccessHandler(data => { showLoading(false); renderAdminStats(data.stats); renderAdminCharts(data.charts); renderAdminTables(data.tables); }).getAdminDashboardData(); }
+    function renderAdminStats(stats) { document.getElementById('admTotalRev').innerText = stats.revenue.toLocaleString(); document.getElementById('admTotalOrder').innerText = stats.orders.toLocaleString(); document.getElementById('admNewCust').innerText = stats.customers.toLocaleString(); document.getElementById('admConv').innerText = stats.conversion; }
+    
+    function renderAdminCharts(charts) {
+      const ctxCombo = document.getElementById('adminComboChart').getContext('2d');
+      if(adminComboChart) adminComboChart.destroy();
+      adminComboChart = new Chart(ctxCombo, {
+         type: 'bar',
+         data: { labels: charts.labels, datasets: [ { label: 'Income', data: charts.income, backgroundColor: '#3b82f6', borderRadius: 4 }, { label: 'Withdrawals', data: charts.withdraw, backgroundColor: '#ef4444', borderRadius: 4 } ] },
+         options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } }, x: { grid: { display: false }, ticks: { color: '#9ca3af' } } } }
+      });
+      const ctxBar = document.getElementById('adminBarChart').getContext('2d');
+      if(adminBarChart) adminBarChart.destroy();
+      adminBarChart = new Chart(ctxBar, {
+         type: 'bar',
+         data: { labels: charts.labels, datasets: [{ label: 'Transactions', data: charts.income.map((v, i) => (v > 0 ? 1 : 0) + (charts.withdraw[i] > 0 ? 1 : 0)), backgroundColor: '#10b981', borderRadius: 4 }] },
+         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#9ca3af' } } } }
+      });
+    }
+
+    function renderAdminTables(tables) {
+      const tbIncome = document.getElementById('adminIncomeTableBody');
+      tbIncome.innerHTML = '';
+      tables.income.forEach(item => {
+         let statusBadge = item.status ? `<span class="status-badge bg-green-900 text-green-300">Success</span>` : `<span class="status-badge bg-yellow-900 text-yellow-300">Pending</span>`;
+         let action = item.status ? `<span class="text-xs text-gray-500">Locked</span>` : `<select onchange="updateTransactionStatus(this, 'Income', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-gray-700 text-white text-xs p-1 rounded border border-gray-600 outline-none"><option value="">Action</option><option value="Approve">Approve</option><option value="Reject">Reject</option></select>`;
+         let slip = (item.proof && item.proof.startsWith('http')) ? `<a href="${item.proof}" target="_blank"><img src="${item.proof}" class="proof-img" title="Click to View"></a>` : `<span class="text-xs text-gray-600">-</span>`;
+         tbIncome.innerHTML += `<tr><td>${item.date}</td><td><div class="font-bold">${item.name}</div><div class="text-xs text-gray-500">${item.phone}</div></td><td><div class="text-xs">${item.service}</div><div class="text-[10px] text-gray-500">${item.channel}</div></td><td><div class="text-green-400">฿${item.amount.toLocaleString()}</div><div class="text-[10px] text-gray-500">Com: ฿${item.comm.toLocaleString()}</div></td><td>${slip}</td><td>${statusBadge}</td><td>${action}</td></tr>`;
+      });
+
+      const tbWithdraw = document.getElementById('adminWithdrawTableBody');
+      tbWithdraw.innerHTML = '';
+      tables.withdraw.forEach(item => {
+         let statusBadge = item.status ? `<span class="status-badge bg-green-900 text-green-300">Paid</span>` : `<span class="status-badge bg-yellow-900 text-yellow-300">Pending</span>`;
+         let action = item.status ? `<span class="text-xs text-gray-500">Locked</span>` : `<select onchange="updateTransactionStatus(this, 'Withdraw', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-gray-700 text-white text-xs p-1 rounded border border-gray-600 outline-none"><option value="">Action</option><option value="Approve">Approve</option><option value="Reject">Reject</option></select>`;
+         tbWithdraw.innerHTML += `<tr><td>${item.date}</td><td><div class="font-bold">${item.name}</div><div class="text-xs text-gray-500">${item.phone}</div></td><td><div class="text-xs text-blue-300"><i class="bank ${item.bank}"></i> ${item.bank}</div><div class="text-xs text-gray-400">${item.acc}</div></td><td class="font-bold text-red-400">฿${item.amount.toLocaleString()}</td><td>${statusBadge}</td><td>${action}</td></tr>`;
+      });
+    }
+
+    // UPDATED: Use Custom Modal for Admin
+    function updateTransactionStatus(selectEl, type, id, itemData) {
+       const status = selectEl.value;
+       if (!status) return;
+
+       // Config for Modal based on Status
+       const isApprove = status === 'Approve';
+       const title = isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ';
+       const message = isApprove ? 'คุณต้องการอนุมัติรายการนี้ใช่หรือไม่?<br>ระบบจะส่งอีเมลยืนยันให้ผู้ใช้ทันที' : 'คุณต้องการปฏิเสธรายการนี้ใช่หรือไม่?';
+       const confirmText = isApprove ? 'อนุมัติ' : 'ปฏิเสธ';
+       const modalType = isApprove ? 'confirm' : 'delete'; // use delete style (red) for reject
+
+       showCustomModal({
+          title: title,
+          message: message,
+          type: modalType,
+          confirmText: confirmText,
+          cancelText: 'ยกเลิก',
+          onConfirm: () => {
+             showLoading(true);
+             google.script.run.withSuccessHandler(() => {
+                showLoading(false);
+                loadAdminData();
+                showCustomModal({ title: 'สำเร็จ', message: 'ดำเนินการเรียบร้อยแล้ว', type: 'success', confirmText: 'ตกลง' });
+             }).updateTransactionStatus(type, id, status, itemData);
+          }
+       });
+    }
+  </script>
+</body>
+</html>
